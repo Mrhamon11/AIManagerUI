@@ -1,0 +1,13 @@
+# Core Dependencies
+PyQt6>=6.4.0
+paramiko>=3.3.0
+
+# Cryptography and Secure Storage
+cryptography>=41.0.0
+keyring>=24.0.0
+SecretStorage>=3.3.3
+argon2-cffi>=23.1.0
+
+# Development and Testing
+pytest>=7.4.0
+pytest-qt>=4.2.0

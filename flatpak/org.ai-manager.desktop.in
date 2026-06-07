@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=AI Model Server Manager
+Comment=Secure remote server administration interface
+Exec=python -m AIModelServerManager
+Icon=ai-manager
+Terminal=false
+Type=Application
+Categories=Development;Network;SSH;
+Keywords=ssh;terminal;server;remote;management;

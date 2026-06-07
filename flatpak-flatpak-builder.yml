@@ -1,0 +1,26 @@
+# Flatpak Builder Configuration for AI Model Server Manager
+# This file configures the flatpak-builder command and modules
+
+# Build directory
+build: .
+install-to: /app
+
+# Runtime configuration
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+
+# Application ID and command
+application-id: org.ai-manager.desktop
+command: python
+
+# Description for Flatpak repo
+title: AI Model Server Manager
+description: Secure remote server management interface with SSH connectivity
+version: 1.0
+
+# Required modules and dependencies will be defined in the flatpak manifest
+modules:
+  # Python runtime bundle (included via org.freedesktop.Platform)
+  - name: python-runtime
+    buildsystem: simple
+    build-commands: []

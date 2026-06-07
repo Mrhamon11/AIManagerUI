@@ -1,0 +1,33 @@
+# Flatpak App Manifest for AI Model Server Manager
+# Application ID follows flatpak org.id naming conventions
+
+application-id: org.ai-manager.desktop
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: python
+options:
+  environment:
+    FLATPAK_ID: org.ai-manager.desktop
+modules:
+  # Python runtime dependencies (from host system packages)
+  - name: python-modules
+    buildsystem: simple
+    build-commands:
+      - pip install --no-warn-script-location -r /app/requirements.txt
+      - mkdir -p /app/src
+      - cp -r /app/src/* /app/src/ || true
+      - cp -r /app/tests/* /app/tests/ || true
+    sources:
+      - type: file
+        path: requirements.txt
+        dest: /app/requirements.txt
+  # Application source code and scripts
+  - name: app-source
+    buildsystem: simple
+    build-commands: []
+    sources:
+      - type: dir
+        path: /app
+        dest: /app
+        skip-build-deps: true
