@@ -79,8 +79,6 @@ AIModelServerManager/
 │   └── credentials.encrypted    # Example encrypted credential format (optional)
 ├── flatpak/
 │   ├── org.ai-managers.AIModelServerManager.yml      # Flatpak manifest
-│   ├── org.ai-managers.AIModelServerManager.desktop  # Desktop file
-│   └── com.github.ai-managers.AIModelServerBuilder.json  # Build config
 ├── tests/                       # Test suite
 │   ├── unit/                    # Unit tests for each module
 │   ├── integration/             # Integration tests requiring server connection
