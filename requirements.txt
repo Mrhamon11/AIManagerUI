@@ -8,6 +8,6 @@ keyring>=24.0.0
 SecretStorage>=3.3.3
 argon2-cffi>=23.1.0
 
-# Development and Testing
-pytest>=7.4.0
-pytest-qt>=4.2.0
+# Platform-specific backend support
+# On Linux, SecretStorage (included in platform-sdk) provides secure storage
+# on GTK/gnome-based systems without requiring pygobject3
