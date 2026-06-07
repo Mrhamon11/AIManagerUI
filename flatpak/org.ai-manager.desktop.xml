@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package type="app">
+  <id>org.ai-manager.desktop</id>
+  <name>AI Model Server Manager</name>
+  <summary>Secure remote server administration interface</summary>
+  <version>1.0</version>
+  <license>MIT</license>
+  <url>https://github.com/ai-manager/AIModelServerManager</url>
+  <description>Secure remote server management interface with SSH connectivity, credential storage, and server monitoring capabilities.</description>
+  
+  <runcommand condition="app">python -m AIModelServerManager %u</runcommand>
+  
+  <files>
+    <file src="/app" dest="/" mode="755"/>
+    <file type="symlink" name=".flatpak-info" target="../share/appinfo/org.ai-manager.desktop.desktop"/>
+    <file type="symlink" name="share/applications/org.ai-manager.desktop.desktop" target="/app/org.ai-manager.desktop.in"/>
+    <file type="symlink" name="icons/ai-manager.svg" target="/app/share/icons/hicolor/scalable/apps/org.ai-manager.desktop.svg"/>
+  </files>
+  
+  <modules path=".">
+    <module name="python-modules">
+      <type>simple</type>
+      <sources>
+        <source type="file" dest-dir="/" name="requirements.txt" target="/app/requirements.txt"/>
+      </sources>
+      <build-commands>
+        <command>pip install --no-warn-script-location -r /app/requirements.txt</command>
+        <command>mkdir -p /app/src && cp -r /app/src/* /app/src/ 2>/dev/null || true</command>
+        <command>mkdir -p /app/tests && cp -r /app/tests/* /app/tests/ 2>/dev/null || true</command>
+      </build-commands>
+    </module>
+    
+    <module name="app-source">
+      <type>simple</type>
+      <sources>
+        <source type="dir" target-dir="/app" dest="/app"/>
+      </sources>
+      <build-commands/>
+    </module>
+  </modules>
+  
+  <secrets>
+    <secret id="org.ai-manager.credentials" name="credentials" writable="true"/>
+  </secrets>
+</package>

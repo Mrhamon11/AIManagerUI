@@ -1,0 +1,63 @@
+{
+  "id": "org.ai-manager.desktop",
+  "summary": "AI Model Server Manager - Secure Remote Administration Interface",
+  "description": "A desktop application for managing and connecting to remote servers via SSH with secure credential storage and encrypted configuration.",
+  "version": "1.0",
+  "branch": "stable",
+  "runtime": "org.freedesktop.Platform",
+  "runtime-version": "24.08",
+  "sdk": "org.freedesktop.Sdk",
+  "command": "python",
+  "modules": [
+    {
+      "name": "base-dependencies",
+      "buildsystem": "simple",
+      "build-commands": [
+        "mkdir -p /app/src",
+        "mkdir -p /app/tests",
+        "cp -r /app/src/* /app/src/ 2>/dev/null || true",
+        "cp -r /app/tests/* /app/tests/ 2>/dev/null || true"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "/app/src",
+          "dest": "/app/src"
+        },
+        {
+          "type": "dir",
+          "path": "/app/tests",
+          "dest": "/app/tests"
+        }
+      ]
+    },
+    {
+      "name": "python-runtime",
+      "buildsystem": "simple",
+      "build-commands": [
+        "pip install --no-warn-script-location -r /app/requirements.txt"
+      ],
+      "sources": [
+        {
+          "type": "file",
+          "path": "/app/requirements.txt",
+          "dest": "/app/requirements.txt"
+        }
+      ]
+    },
+    {
+      "name": "app-source",
+      "buildsystem": "simple",
+      "build-commands": [],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "/app",
+          "dest": "/app"
+        }
+      ]
+    }
+  ],
+  "separate-locales": false,
+  "cleanup": ["metadata"]
+}
