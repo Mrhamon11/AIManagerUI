@@ -264,6 +264,73 @@ class SettingsDialog(QDialog):
         test_vbox.addSpacing(10)
 
         # ========================================
+        # Script Configuration Section (Task 2)
+        # ========================================
+        script_group = QGroupBox("Script Paths", self)
+        script_vbox = QVBoxLayout(script_group)
+        script_vbox.setSpacing(10)
+
+        # Start script path field
+        start_script_label = QLabel(
+            "📂 Start Script Path (remote server):", 
+            self
+        )
+        start_script_label.setStyleSheet("font-weight: bold; color: #e0e0e0;")
+
+        self.start_script_edit = QLineEdit(self)
+        self.start_script_edit.setPlaceholderText("/usr/local/bin/start_ai_server.sh")
+        self.start_script_edit.setMinimumHeight(40)
+        self.start_script_edit.setText("/usr/local/bin/start_ai_server.sh")  # Default from config
+        self.start_script_edit.textChanged.connect(self._validate_script_paths)
+
+        script_vbox.addWidget(start_script_label)
+        script_vbox.addWidget(self.start_script_edit)
+
+        # Stop script path field
+        stop_script_label = QLabel(
+            "📂 Stop Script Path (remote server):", 
+            self
+        )
+        stop_script_label.setStyleSheet("font-weight: bold; color: #e0e0e0;")
+
+        self.stop_script_edit = QLineEdit(self)
+        self.stop_script_edit.setPlaceholderText("/usr/local/bin/stop_ai_server.sh")
+        self.stop_script_edit.setMinimumHeight(40)
+        self.stop_script_edit.setText("/usr/local/bin/stop_ai_server.sh")  # Default from config
+        self.stop_script_edit.textChanged.connect(self._validate_script_paths)
+
+        script_vbox.addWidget(stop_script_label)
+        script_vbox.addWidget(self.stop_script_edit)
+
+        # Restart script path field (optional - can be omitted for smart restart)
+        restart_script_label = QLabel(
+            "🔄 Restart Script Path (remote server, optional):", 
+            self
+        )
+        restart_script_label.setStyleSheet("font-weight: bold; color: #e0e0e0;")
+
+        self.restart_script_edit = QLineEdit(self)
+        self.restart_script_edit.setPlaceholderText("/usr/local/bin/restart_ai_server.sh")
+        self.restart_script_edit.setMinimumHeight(40)
+        self.restart_script_edit.setText("")  # Optional field, leave empty for smart restart
+        self.restart_script_edit.textChanged.connect(self._validate_script_paths)
+
+        script_vbox.addWidget(restart_script_label)
+        script_vbox.addWidget(self.restart_script_edit)
+
+        # Info text about scripts
+        info_text = QLabel(
+            "ℹ️  These paths are used on the REMOTE SERVER when running start/stop commands.\n"
+            "    Scripts will be executed with: <sh /path/to/script>\n"
+            "    Leave restart empty to use smart restart (detects if running first)",
+            self
+        )
+        info_text.setWordWrap(True)
+        info_text.setStyleSheet("color: #808080; font-size: 11px;")
+        script_vbox.addWidget(info_text, alignment=Qt.AlignmentFlag.AlignLeft)
+
+
+        # ========================================
         # Credential Storage Settings Group
         # ========================================
         credentials_group = QGroupBox("Credential Storage", self)
@@ -369,6 +436,9 @@ class SettingsDialog(QDialog):
 
         # Add credential storage and options groups
         form_layout.addRow(None, None)  # Spacer
+        main_layout.addWidget(script_group)
+        # Add credential storage and options groups
+        form_layout.addRow(None, None)  # Spacer
         main_layout.addWidget(credentials_group)
         main_layout.addWidget(options_group)
 
@@ -424,6 +494,20 @@ class SettingsDialog(QDialog):
                 color: #67e8f9;
                 font-weight: bold;
             """)
+    def _validate_script_paths(self) -> None:
+        """Validate that script paths are not empty if provided."""
+        start_path = str(self.start_script_edit.text()).strip()
+        stop_path = str(self.stop_script_edit.text()).strip()
+        restart_path = str(self.restart_script_edit.text()).strip()
+
+        # Only validate non-empty fields (remove error styling)
+        if start_path and len(start_path) > 3:
+            self.start_script_edit.setStyleSheet("")
+        if stop_path and len(stop_path) > 3:
+            self.stop_script_edit.setStyleSheet("")
+        if restart_path and len(restart_path) > 3:
+            self.restart_script_edit.setStyleSheet("")
+
 
     def _on_test_clicked(self) -> None:
         """Handle Test Server Connection button click."""
