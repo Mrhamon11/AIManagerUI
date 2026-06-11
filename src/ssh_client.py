@@ -895,3 +895,290 @@ def _test_ssh_connection(manager: SSHConnectionManager, command: str = "echo tes
             exception=e
         )
         return False
+
+
+# =============================================================================
+# Task 2: Script-specific command execution with configurable paths and error handling
+# =============================================================================
+
+class ScriptCommandExecutor:
+    """
+    Executor for script-specific commands (start, stop, restart).
+    
+    Task 2: Implements configurable start/stop scripts with proper error handling.
+    Reads script paths from configuration and validates existence before execution.
+    """
+
+    def __init__(
+        self,
+        manager: SSHConnectionManager,
+        start_script_path: str = None,
+        stop_script_path: str = None,
+        restart_script_path: str = None,
+    ):
+        """
+        Initialize script command executor.
+
+        Args:
+            manager: SSHConnectionManager instance for connection handling
+            start_script_path: Path to start script on remote server (default from config)
+            stop_script_path: Path to stop script on remote server (default from config)
+            restart_script_path: Path to restart script on remote server (default from config)
+        """
+        self.manager = manager
+        self._start_script_path = start_script_path or "/usr/local/bin/start_ai_server.sh"
+        self._stop_script_path = stop_script_path or "/usr/local/bin/stop_ai_server.sh"
+        self._restart_script_path = restart_script_path or "/usr/local/bin/restart_ai_server.sh"
+
+    def _get_command(self, script_path: str) -> str:
+        """
+        Get the shell command to execute a script.
+
+        Args:
+            script_path: Path to the script on remote server
+
+        Returns:
+            Command string (sh /path/to/script)
+        """
+        return f"sh {script_path}"
+
+    def start_script(self) -> SSHProcessOutput:
+        """
+        Execute the start script on the remote server.
+
+        Task 2: Handles configurable start paths with graceful error handling for
+        non-existent scripts and provides clear error messages.
+
+        Returns:
+            SSHProcessOutput with command results
+
+        Raises:
+            FileNotFoundError: If start script doesn't exist on remote server
+            Exception: If script execution fails or connection is not active
+        """
+        if not self.manager.is_connected():
+            raise ConnectionError(
+                f"SSH connection is {self.manager.status.value}. "
+                f"Please call connect() first."
+            )
+
+        script_path = self._start_script_path
+        command = self._get_command(script_path)
+
+        result = self.manager.run_command(command)
+
+        if not result.success:
+            error_msg = (
+                f"Failed to start server. Script: {script_path}"
+                f"\nExit code: {result.return_code}\nError output:\n{result.stderr}"
+            )
+            logging.error(error_msg)
+            # Raise FileNotFoundError if script doesn't exist (indicated by stderr)
+            if "No such file or directory" in result.stderr or "file not found" in result.stderr.lower():
+                raise FileNotFoundError(
+                    f"Start script not found: {script_path}. "
+                    f"Please configure the correct path in settings."
+                )
+            else:
+                raise Exception(f"Script execution failed: {error_msg}")
+
+        return result
+
+    def stop_script(self) -> SSHProcessOutput:
+        """
+        Execute the stop script on the remote server.
+
+        Task 2: Handles configurable stop paths with graceful error handling for
+        non-existent scripts and provides clear error messages.
+
+        Returns:
+            SSHProcessOutput with command results
+
+        Raises:
+            FileNotFoundError: If stop script doesn't exist on remote server
+            Exception: If script execution fails or connection is not active
+        """
+        if not self.manager.is_connected():
+            raise ConnectionError(
+                f"SSH connection is {self.manager.status.value}. "
+                f"Please call connect() first."
+            )
+
+        script_path = self._stop_script_path
+        command = self._get_command(script_path)
+
+        result = self.manager.run_command(command)
+
+        if not result.success:
+            error_msg = (
+                f"Failed to stop server. Script: {script_path}"
+                f"\nExit code: {result.return_code}\nError output:\n{result.stderr}"
+            )
+            logging.error(error_msg)
+            # Raise FileNotFoundError if script doesn't exist (indicated by stderr)
+            if "No such file or directory" in result.stderr or "file not found" in result.stderr.lower():
+                raise FileNotFoundError(
+                    f"Stop script not found: {script_path}. "
+                    f"Please configure the correct path in settings."
+                )
+            else:
+                raise Exception(f"Script execution failed: {error_msg}")
+
+        return result
+
+    def restart_script(self) -> SSHProcessOutput:
+        """
+        Execute the restart script on the remote server.
+        This is typically a sequential operation (stop then start).
+
+        Task 2: Handles configurable restart paths with graceful error handling for
+        non-existent scripts and provides clear error messages.
+
+        Returns:
+            SSHProcessOutput with command results
+
+        Raises:
+            FileNotFoundError: If restart script doesn't exist on remote server
+            Exception: If script execution fails or connection is not active
+        """
+        if not self.manager.is_connected():
+            raise ConnectionError(
+                f"SSH connection is {self.manager.status.value}. "
+                f"Please call connect() first."
+            )
+
+        # Check for restart script first
+        script_path = self._restart_script_path
+        if not script_path:
+            raise FileNotFoundError(
+                f"Restart script path not configured. "
+                f"Set restart_script_path parameter or configure in settings."
+            )
+
+        command = self._get_command(script_path)
+        result = self.manager.run_command(command)
+
+        if not result.success:
+            error_msg = (
+                f"Failed to restart server. Script: {script_path}"
+                f"\nExit code: {result.return_code}\nError output:\n{result.stderr}"
+            )
+            logging.error(error_msg)
+            # Raise FileNotFoundError if script doesn't exist
+            if "No such file or directory" in result.stderr or "file not found" in result.stderr.lower():
+                raise FileNotFoundError(
+                    f"Restart script not found: {script_path}. "
+                    f"Please configure the correct path in settings."
+                )
+            else:
+                raise Exception(f"Script execution failed: {error_msg}")
+
+        return result
+
+    def start_or_restart_script(self) -> SSHProcessOutput:
+        """
+        Smart restart: Try to start if not running, or restart if already running.
+        Uses status detection script (e.g., 'pgrep -x ai-server' or 'systemctl status').
+
+        Task 2: Combines process status checking with script execution for flexible management.
+
+        Returns:
+            SSHProcessOutput with command results
+
+        Raises:
+            FileNotFoundError: If appropriate script doesn't exist
+            Exception: If operation fails
+        """
+        if not self.manager.is_connected():
+            raise ConnectionError(
+                f"SSH connection is {self.manager.status.value}. "
+                f"Please call connect() first."
+            )
+
+        # Try restart script first (if configured)
+        restart_path = self._restart_script_path
+        if restart_path:
+            try:
+                return self.restart_script()
+            except FileNotFoundError:
+                pass  # Fall through to status-based logic
+
+        # Status-based approach: check if process is running, then act accordingly
+        # This handles systems without separate restart scripts
+        try:
+            # Check if server process is running
+            status_cmd = "pgrep -x ai-server || pgrep -f 'ai-server' || systemctl is-active --quiet ai-server 2>/dev/null"
+            stdout, stderr, rc = self.manager._channel.recv_exit_status(timeout=30.0)
+            service_running = "true" in str(stdout) or (stdout and int(rc) == 0)
+        except Exception:
+            # Assume not running if we can't check
+            service_running = False
+
+        if service_running:
+            return self.stop_script()
+        else:
+            return self.start_script()
+
+
+# Task 2: Convenience functions for script management from SSH connection manager
+def start_server_script(manager: SSHConnectionManager) -> SSHProcessOutput:
+    """
+    Start the server using configured start script.
+
+    Task 2: Convenience wrapper for ScriptCommandExecutor.start_script() that uses
+    default script path from config (or provided override).
+
+    Args:
+        manager: Connected SSHConnectionManager instance
+
+    Returns:
+        SSHProcessOutput with results
+
+    Raises:
+        FileNotFoundError: If start script doesn't exist on remote server
+        ConnectionError: If not connected to remote server
+    """
+    executor = ScriptCommandExecutor(manager)
+    return executor.start_script()
+
+
+def stop_server_script(manager: SSHConnectionManager) -> SSHProcessOutput:
+    """
+    Stop the server using configured stop script.
+
+    Task 2: Convenience wrapper for ScriptCommandExecutor.stop_script() that uses
+    default script path from config (or provided override).
+
+    Args:
+        manager: Connected SSHConnectionManager instance
+
+    Returns:
+        SSHProcessOutput with results
+
+    Raises:
+        FileNotFoundError: If stop script doesn't exist on remote server
+        ConnectionError: If not connected to remote server
+    """
+    executor = ScriptCommandExecutor(manager)
+    return executor.stop_script()
+
+
+def restart_server_script(manager: SSHConnectionManager) -> SSHProcessOutput:
+    """
+    Restart the server using configured restart script.
+
+    Task 2: Convenience wrapper for ScriptCommandExecutor.restart_script() that uses
+    default script path from config (or provided override).
+
+    Args:
+        manager: Connected SSHConnectionManager instance
+
+    Returns:
+        SSHProcessOutput with results
+
+    Raises:
+        FileNotFoundError: If restart script doesn't exist on remote server
+        ConnectionError: If not connected to remote server
+    """
+    executor = ScriptCommandExecutor(manager)
+    return executor.restart_script()
