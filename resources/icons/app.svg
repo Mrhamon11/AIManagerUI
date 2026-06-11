@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#1a1a2e"/>
+  <!-- AI Model icon -->
+  <circle cx="256" cy="180" r="70" fill="#06b6d4" opacity="0.9"/>
+  <path d="M256 80 L350 200 L256 320 L162 200 Z" fill="#10b981" opacity="0.85"/>
+  <!-- Server tower icon -->
+  <rect x="180" y="360" width="152" height="72" rx="8" fill="#3a3a5e"/>
+  <rect x="204" y="374" width="104" height="14" fill="#16213e"/>
+  <rect x="204" y="398" width="80" height="14" fill="#16213e"/>
+</svg>

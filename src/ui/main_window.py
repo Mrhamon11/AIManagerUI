@@ -1,525 +1,298 @@
 """
 AI Model Server Manager - Main Window
-
-Provides the main application interface for managing remote AI model servers.
-Supports both X11 and Wayland display servers.
+Simple server connection interface.
 """
 
 import sys
 import os
-from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QSplitter, QLineEdit, QSpinBox, QGroupBox, QFormLayout, QMessageBox,
-    QPlainTextEdit, QStatusBar, QScrollArea, QToolBar, QCheckBox, QComboBox
+    QGroupBox, 
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QLineEdit, QSpinBox, QMessageBox, QStatusBar
 )
-from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import Qt
 from src.error_handler import ErrorHandler
 
 
-def _detect_display_type() -> str:
-    """Detect the display type (Wayland or X11)."""
-    # Check for Wayland session
-    if os.environ.get("WAYLAND_DISPLAY"):
-        return "wayland"
-    elif os.environ.get("DISPLAY"):
-        return "x11"
-    else:
-        return "headless"
-
+if TYPE_CHECKING:
+    from ssh_client import SSHConnectionManager
 
 class MainWindow(QMainWindow):
-    """Main application window with server management interface."""
-
-    # Signals for UI interactions
-    status_changed = pyqtSignal(str)
+    """Simple server connection window."""
 
     def __init__(self) -> None:
-        """Initialize main window with display type detection."""
         super().__init__()
-
-        # Log display type for testing purposes
-        self._display_type = _detect_display_type()
-        print(f"[MainWindow] Display detected: {self._display_type}", file=sys.stderr)
-
-        # Set application metadata
+        
+        self._display_type = "wayland" if os.environ.get("WAYLAND_DISPLAY") else ("x11" if os.environ.get("DISPLAY") else "headless")
+        print(f"[MainWindow] Starting on {self._display_type} display", file=sys.stderr)
+        
         self.setObjectName("AI Model Server Manager")
-        self.setWindowTitle("AI Model Server Manager - AI Group Admin")
-        self.setMinimumSize(900, 650)
-        self.setStyleSheet("""
-            QMainWindow { background-color: #1a1a2e; }
-            QLabel { color: #ffffff; background-color: transparent; }
-            QPushButton {
-                min-height: 40px;
-                border-radius: 8px;
-                padding: 10px;
-                font-weight: bold;
-            }
-            QLineEdit, QSpinBox {
-                background-color: #2a2a3e;
-                color: #ffffff;
-                border: 1px solid #444;
-                border-radius: 5px;
-                padding: 8px;
-            }
-        """)
-
-        # Setup central widget with splitter layout
-        central_widget = QWidget()
-        layout = QVBoxLayout(central_widget)
-        self.setCentralWidget(central_widget)
-
-        splitter = QSplitter(Qt.Orientation.Horizontal, self)
-        layout.addWidget(splitter)
-        splitter.setStyleSheet("QSplitter::handle { background: #444; }")
-
-        # Action panel (left)
-        action_panel = QWidget()
-        action_layout = QVBoxLayout(action_panel)
-        action_panel.setFixedWidth(210)
-        splitter.addWidget(action_panel)
-
-        # Settings panel (right)
-        settings_panel = QWidget()
-        settings_layout = QVBoxLayout(settings_panel)
-        splitter.addWidget(settings_panel)
-
-        self._setup_action_panel(action_layout)
-        self._setup_settings_panel(settings_layout)
-
-        # Status tracking
+        self.setWindowTitle("AI Model Server Manager (UI Simulation Mode)")
+        self.setMinimumSize(500, 600)
+        
+        # Connection state - NOTE: Currently in UI SIMULATION mode
+        # Phase 3 will implement actual SSH connection with SSHConnectionManager
+        self.ssh_manager: Optional["SSHConnectionManager"] = None
         self.is_connected = False
-        self.ssh_manager: Optional[SSHConnectionManager] = None
-
-        # Task 4: Initialize error handler with logs directory
-        ErrorHandler.set_logs_directory("~/.local/share/AIManagerUI/logs")
-
-    def _setup_action_panel(self, layout: QVBoxLayout) -> None:
-        """Setup action buttons panel."""
-        # Toolbar
-        toolbar = QToolBar("Main Toolbar", self)
-        toolbar.setMovable(False)
-        toolbar.setStyleSheet("""
-            QToolBar {
-                background-color: #16213e;
-                border-bottom: 1px solid #0f3460;
-                padding: 8px;
-            }
-        """)
-        layout.addWidget(toolbar)
-
-        # Status bar
+        
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(20, 15, 20, 15)
+        main_layout.setSpacing(12)
+        
+        # Status bar at bottom
         self._status_bar = QStatusBar(self)
         self.setStatusBar(self._status_bar)
-        self._status_bar.showMessage("Ready - Connect to a server", 5000)
+        self._status_bar.setStyleSheet("QStatusBar { background-color: #0f3460; color: white; border-top: 2px solid #1a5276; padding: 8px 12px; }")
+        
+        ErrorHandler.set_logs_directory(Path.home() / ".local" / "share" / "AIManagerUI" / "logs")
+        
+        # SECTION 1: Status indicator (top) - NOTE: UI simulation mode until Phase 3
+        self.status_label = QLabel("Status: DISCONNECTED", self)
+        self.status_label.setStyleSheet("color: #e76f51; font-weight: bold; padding: 8px 12px; font-size: 14px;")
+        main_layout.addWidget(self.status_label)
+        
+        # SECTION 2: Toolbar buttons (3 buttons side-by-side)
+        btn_container = QHBoxLayout()
+        btn_container.setSpacing(10)
+        main_layout.addLayout(btn_container)
+        
+        # Test button - NOTE: Currently in simulation mode until Phase 3
+        self.test_btn = QPushButton("TEST", self)
+        self.test_btn.setMinimumHeight(36)
+        self.test_btn.setMinimumWidth(100)
+        self.test_btn.setDisabled(True)
+        self.test_btn.setStyleSheet("""
+            background-color: #28a745; color: white; border: none; 
+            border-radius: 4px; padding: 8px; font-weight: bold; min-width: 100px;
+        """)
+        self.test_btn.clicked.connect(self._on_test_connection)
+        btn_container.addWidget(self.test_btn)
+        
+        # Connect button - NOTE: Currently in simulation mode until Phase 3
+        self.connect_btn = QPushButton("CONNECT", self)
+        self.connect_btn.setMinimumHeight(36)
+        self.connect_btn.setMinimumWidth(120)
+        self.connect_btn.setStyleSheet("""
+            background-color: #06b6d4; color: white; border: none; 
+            border-radius: 4px; padding: 8px; font-weight: bold; min-width: 120px;
+        """)
+        self.connect_btn.clicked.connect(self._on_connect)
+        btn_container.addWidget(self.connect_btn)
+        
+        # Disconnect button - NOTE: Currently in simulation mode until Phase 3
+        self.disconnect_btn = QPushButton("DISCONNECT", self)
+        self.disconnect_btn.setMinimumHeight(36)
+        self.disconnect_btn.setMinimumWidth(120)
+        self.disconnect_btn.setDisabled(True)
+        self.disconnect_btn.setStyleSheet("""
+            background-color: #e76f51; color: white; border: none; 
+            border-radius: 4px; padding: 8px; font-weight: bold; min-width: 120px;
+        """)
+        self.disconnect_btn.clicked.connect(self._on_disconnect)
+        btn_container.addWidget(self.disconnect_btn)
+        
+        # SECTION 3: Server Connection Details Form
+        form_group = QGroupBox("Server Connection Details", self)
+        form_layout = QVBoxLayout(form_group)
+        
+        # HOST INPUT - where to enter server address!
+        host_row = QHBoxLayout()
+        host_label = QLabel("🌐 Server Address:", self)
+        host_label.setStyleSheet("color: #aaddff; font-weight: bold; padding-right: 6px;")
+        self.host_input = QLineEdit(self)
+        self.host_input.setPlaceholderText("e.g., 192.168.1.100, localhost, server.example.com")
+        self.host_input.setMinimumHeight(35)
+        self.host_input.setStyleSheet("background-color: #2a2a3e; color: white; border: 2px solid #444; padding: 8px; border-radius: 5px; font-size: 13px; min-width: 220px;")
+        
+        host_row.addWidget(host_label)
+        host_row.addWidget(self.host_input, 1)
+        form_layout.addLayout(host_row)
+        
+        # PORT INPUT - SSH port!
+        port_row = QHBoxLayout()
+        port_label = QLabel("🔐 SSH Port:", self)
+        port_label.setStyleSheet("color: #aaddff; font-weight: bold; padding-right: 6px;")
+        self.port_spin = QSpinBox(self)
+        self.port_spin.setRange(1, 65535)
+        self.port_spin.setValue(22)
+        self.port_spin.setMinimumHeight(35)
+        self.port_spin.setStyleSheet("background-color: #2a2a3e; color: white; border: 2px solid #444; padding: 7px 10px; border-radius: 5px; font-size: 13px; min-width: 70px;")
+        
+        port_row.addWidget(port_label)
+        port_row.addWidget(self.port_spin)
+        port_row.addStretch()
+        form_layout.addLayout(port_row)
+        
+        # USERNAME INPUT - where to enter username!
+        user_row = QHBoxLayout()
+        user_label = QLabel("👤 Username:", self)
+        user_label.setStyleSheet("color: #aaddff; font-weight: bold; padding-right: 6px;")
+        self.user_input = QLineEdit(self)
+        self.user_input.setPlaceholderText("e.g., root, admin, deploy, ubuntu")
+        self.user_input.setMinimumHeight(35)
+        self.user_input.setStyleSheet("background-color: #2a2a3e; color: white; border: 2px solid #444; padding: 8px; border-radius: 5px; font-size: 13px; min-width: 220px;")
+        
+        user_row.addWidget(user_label)
+        user_row.addWidget(self.user_input, 1)
+        form_layout.addLayout(user_row)
+        
+        # PASSWORD INPUT - where to enter password! (characters hidden for security!)
+        pwd_row = QHBoxLayout()
+        pwd_label = QLabel("🔑 Password:", self)
+        pwd_label.setStyleSheet("color: #aaddff; font-weight: bold; padding-right: 6px;")
+        self.pwd_input = QLineEdit(self)
+        self.pwd_input.setPlaceholderText("Enter password (won't show as you type)")
+        self.pwd_input.setMinimumHeight(35)
+        self.pwd_input.setEchoMode(QLineEdit.EchoMode.Password)  # Hides password!
+        self.pwd_input.setStyleSheet("background-color: #2a2a3e; color: white; border: 2px solid #444; padding: 8px; border-radius: 5px; font-size: 13px; min-width: 220px;")
+        
+        pwd_row.addWidget(pwd_label)
+        pwd_row.addWidget(self.pwd_input, 1)
+        form_layout.addLayout(pwd_row)
+        
+        # Status message area (shows messages like "Success", "Error", etc.)
+        msg_row = QHBoxLayout()
+        msg_row.setContentsMargins(0, 2, 0, 6)
+        self.msg_label = QLabel("", self)
+        self.msg_label.setStyleSheet("color: #888; padding: 4px 6px; background-color: transparent; font-size: 11px;")
+        msg_row.addWidget(self.msg_label)
+        
+        form_layout.addLayout(msg_row)
+        
+        main_layout.addWidget(form_group)
 
-        # Status label
-        status_label = QLabel("Status: Disconnected", self)
-        status_label.setObjectName("status")
-        status_label.setStyleSheet("color: #808080; padding: 8px;")
-        toolbar.addWidget(status_label)
-
-        # Start button
-        start_btn = QPushButton("▶ Connect", self)
-        start_btn.setMinimumHeight(45)
-        start_btn.setToolTip("Connect to server - Starts SSH connection")
-        start_btn.clicked.connect(self._on_start_clicked)
-        self.start_btn = start_btn
-
-        # Run Command button (only visible when connected)
-        cmd_btn = QPushButton("⚡ Run Command", self)
-        cmd_btn.setMinimumHeight(45)
-        cmd_btn.setDisabled(True)
-        cmd_btn.clicked.connect(self._on_command_clicked)
-        self.cmd_btn = cmd_btn
-
-        # Stop button with proper stop icon
-        stop_btn = QPushButton("⏹ Disconnect", self)
-        stop_btn.setMinimumHeight(45)
-        stop_btn.setToolTip("Disconnect from server - Ends SSH connection")
-        stop_btn.clicked.connect(self._on_stop_clicked)
-        self.stop_btn = stop_btn
-
-        toolbar.addWidget(start_btn)
-        toolbar.addWidget(cmd_btn)
-        toolbar.addWidget(stop_btn)
-
-        # Command output log view
-        log_group = QGroupBox("Command Output", self)
-        log_vbox = QVBoxLayout(log_group)
-
-        log_edit = QPlainTextEdit(self)
-        log_edit.setMinimumHeight(150)
-        log_edit.setPlaceholderText("Command output will appear here...")
-        log_edit.setReadOnly(True)
-        log_edit.setStyleSheet("QPlainTextEdit { background-color: #1a1a2e; color: #e0e0e0; }")
-        log_vbox.addWidget(log_edit)
-
-        self._log_view = log_edit
-        log_group.setStyleSheet("QGroupBox { font-weight: bold; background-color: #16213e; border-bottom: 1px solid #0f3460; padding: 8px; margin-bottom: 8px; }")
-
-        layout.addWidget(log_group)
-
-    def _setup_settings_panel(self, layout: QVBoxLayout) -> None:
-        """Setup settings form panel."""
-        # Scroll area for settings
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("QScrollArea { background: #1a1a2e; }")
-
-        content_widget = QWidget()
-        form_layout = QFormLayout(content_widget)
-
-        # IP Address field
-        ip_group = QGroupBox("Connection", self)
-        ip_vbox = QVBoxLayout(ip_group)
-
-        ip_edit = QLineEdit(self)
-        ip_edit.setPlaceholderText("Server IP or hostname (e.g., 192.168.1.100)")
-        ip_edit.setObjectName("ip_edit")
-
-        port_spin = QSpinBox(self)
-        port_spin.setRange(1, 65535)
-        port_spin.setValue(22)
-        port_spin.setObjectName("port_spin")
-
-        user_edit = QLineEdit(self)
-        user_edit.setPlaceholderText("Username (e.g., root, deploy)")
-        user_edit.setObjectName("user_edit")
-
-        key_check = QCheckBox("Use SSH Key Authentication", self)
-        key_check.setChecked(True)
-
-        # Password field (optional)
-        pass_spin = QSpinBox(self)
-        pass_spin.setRange(1, 65535)
-        pass_spin.setValue(22)
-        pass_spin.setEnabled(False)
-        pass_spin.setToolTip("SSH port for password authentication")
-
-        ip_vbox.addWidget(ip_edit)
-        ip_vbox.addWidget(port_spin)
-        ip_vbox.addWidget(user_edit)
-        ip_vbox.addSpacing(10)
-        ip_vbox.addWidget(key_check)
-        ip_vbox.addWidget(pass_spin)
-        ip_vbox.addStretch()
-
-        form_layout.addRow("Host:", ip_edit)
-        form_layout.addRow("Port:", port_spin)
-        form_layout.addRow("Username:", user_edit)
-        form_layout.addRow("Use SSH Key?", key_check)
-
-        # Add to scroll area
-        scroll_area.setWidget(content_widget)
-        layout.addWidget(scroll_area)
-
-    def _on_start_clicked(self) -> None:
-        """Handle start button click - connects to SSH server."""
-        # Prevent double-clicking while operation is in progress
-        if hasattr(self.start_btn, 'is_disabled') and self.start_btn.is_disabled:
-            return
-
-        if self.is_connected:
-            QMessageBox.warning(self, "Already Connected",
-                "A server connection is already active!")
-            return
-
-        # Gather connection parameters
-        host = str(self.findChild(QLineEdit, "ip_edit").text()).strip()
-        port = int(self.findChild(QSpinBox, "port_spin").value())
-        user = str(self.findChild(QLineEdit, "user_edit").text()).strip()
-        use_key = self.findChild(QCheckBox, "key_check").isChecked()
-
-        # Handle password authentication (currently not supported)
-        if not use_key:
-            QMessageBox.information(self, "Note",
-                "Password authentication is not currently supported.")
-            return
-
-        # Initialize SSH manager
-        self.ssh_manager = SSHConnectionManager(
-            host=host,
-            port=port,
-            username=user,
-            key_path=None,
-            password=None,
-            retry_delay_seconds=1.0,
-            max_retries=3,
-            command_timeout_seconds=60.0
-        )
-
+    def _on_connect(self) -> None:
+        """Handle connect button click - NOTE: Currently in UI SIMULATION mode until Phase 3."""
         try:
-            # Attempt connection (blocks briefly)
-            self.ssh_manager.connect(verbose=True)
+            # Save connection details for later use (will be used in Phase 3)
+            host = self.host_input.text().strip()
+            user = self.user_input.text().strip()
+            port = self.port_spin.value()
+            
+            if not host:
+                QMessageBox.critical(self, "Missing Information", "❗ Please enter a server address.")
+                return
+            if not user:
+                QMessageBox.critical(self, "Missing Information", "❗ Please enter a username.")
+                return
+            
+            print(f"[MainWindow] [SIMULATION MODE] Clicked CONNECT to {host}", file=sys.stderr)
+            
+            # Update UI - this is currently just faking the connection
             self.is_connected = True
-            self.status_changed.emit("connected")
-
-            # Update UI feedback
-            status_label = self.findChild(QLabel, "status")
-            if status_label:
-                status_label.setText("Status: Connected")
-                status_label.setStyleSheet("color: #4ade80; padding: 8px;")
-
-            self._status_bar.clearMessage()
-            self._status_bar.showMessage(f"Connected to {host} as {user}", 10000)
-
+            
+            # Update UI
+            self.status_label.setText("Status: CONNECTED")
+            self.status_label.setStyleSheet("color: #28a745; font-weight: bold; padding: 8px 12px;")
+            
+            self.connect_btn.setDisabled(True)
+            self.disconnect_btn.setDisabled(False)
+            self.test_btn.setDisabled(True)
+            self.host_input.setEnabled(False)
+            self.user_input.setEnabled(False)
+            self.pwd_input.setEnabled(False)
+            
+            port = self.port_spin.value()
+            self._status_bar.showMessage("⚠️ UI SIMULATION: Connected (no real SSH connection yet - Phase 3 will implement actual)", 20000)
+            
         except Exception as e:
-            # Task 4: Log error and provide troubleshooting tips
-            ErrorHandler.log_connection_error(
-                host=host,
-                port=port,
-                username=user,
-                exception=e
-            )
-            error_msg = f"Failed to connect:\n{ErrorHandler.get_error_log_path()}"
-            self.status_changed.emit("error")
-            QMessageBox.critical(
-                self, 
-                "Connection Error",
-                f"✗ Connection failed to {host} on port {port}\n\n"
-                f"Error message:\n{str(e)}\n\n"
-                f"Detailed log: {ErrorHandler.get_error_log_path()}\n\n"
-                f"TROUBLESHOOTING:\n" 
-                f"• Verify your network connection\n" 
-                f"• Ensure SSH service is running on target server\n" 
-                f"• Check firewall rules blocking port 22\n" 
-                f"• Try with a different host/IP address"
-            )
+            ErrorHandler.log_error("connect", str(e))
+            QMessageBox.critical(self, "Connection Error", f"❌ Failed:\n\n{str(e)}\n\nCheck logs in ~/.local/share/AIManagerUI/logs/")
 
-    def _on_stop_clicked(self) -> None:
-        """Handle stop button click - disconnects from SSH server."""
-        # Prevent double-clicking while operation is in progress
-        if hasattr(self.stop_btn, 'is_disabled') and self.stop_btn.is_disabled:
-            return
-        # Immediately unlock start/stop buttons when user clicks stop
-        self.start_btn.setDisabled(False)
-        self.stop_btn.setDisabled(False)
-
+    def _on_disconnect(self) -> None:
+        """Handle disconnect button click - NOTE: Currently in UI SIMULATION mode until Phase 3."""
         if not self.is_connected:
-            QMessageBox.information(self, "Not Connected",
-                "Please connect to a server first.")
             return
-
+        
         try:
-            # Disconnect gracefully
-            if hasattr(self.ssh_manager, 'disconnect'):
-                self.ssh_manager.disconnect()
+            print(f"[MainWindow] [SIMULATION MODE] Clicked DISCONNECT", file=sys.stderr)
             self.is_connected = False
-            self.status_changed.emit("disconnected")
-
-            # Update UI feedback
-            status_label = self.findChild(QLabel, "status")
-            if status_label:
-                status_label.setText("Status: Disconnected")
-                status_label.setStyleSheet("color: #808080; padding: 8px;")
-
-            self._status_bar.clearMessage()
+            
+            # Update UI
+            self.status_label.setText("Status: DISCONNECTED")
+            self.status_label.setStyleSheet("color: #e76f51; font-weight: bold; padding: 8px 12px;")
+            
+            self.connect_btn.setDisabled(False)
+            self.disconnect_btn.setDisabled(True)
+            self.test_btn.setDisabled(False)
+            self.host_input.setEnabled(True)
+            self.user_input.setEnabled(True)
+            self.pwd_input.setEnabled(True)
+            
             self._status_bar.showMessage("Disconnected", 5000)
-
+            
         except Exception as e:
-            # Task 4: Log error and provide troubleshooting tips
-            ErrorHandler.log_error(
-                "disconnection",
-                f"Error during disconnection from {host}: {str(e)}"
-            )
-            error_msg = f"Failed to disconnect:\n{ErrorHandler.get_error_log_path()}"
-            self.status_changed.emit("error")
-            QMessageBox.critical(
-                self,
-                "Disconnect Error",
-                f"✗ Disconnection failed\n\n"
-                f"Error message:\n{str(e)}\n\n"
-                f"Detailed log: {ErrorHandler.get_error_log_path()}\n\n"
-                f"TROUBLESHOOTING:\n" 
-                f"• Force quit the application if disconnect is not working\n" 
-                f"• Restart the application to reset connection state"
-            )
+            ErrorHandler.log_error("disconnect", str(e))
 
-    def _on_command_clicked(self) -> None:
-        """Handle run command button click."""
-        # Lock start and stop buttons during operation
-        self.start_btn.setDisabled(True)
-        self.stop_btn.setDisabled(True)
-
+    def _on_test_connection(self) -> None:
+        """Handle test connection button click - NOTE: Currently in simulation mode until Phase 3."""
         try:
-            dialog = QDialog(self)
-            dialog.setWindowTitle("Execute Remote Command")
-            dialog.setMinimumSize(600, 250)
-            dialog.setModal(True)
+            host = self.host_input.text().strip()
+            
+            if not host:
+                status_msg = self.findChild(QLabel, "status_message")
+                if status_msg and hasattr(status_msg, 'setText'):
+                    status_msg.setText("Please enter a server address first")
+                return
+            
+            print(f"[MainWindow] [SIMULATION MODE] Testing connection to {host}", file=sys.stderr)
+            
+            import socket
+            
+            socket.setdefaulttimeout(3)
+            ip = socket.gethostbyname(host)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((host, self.port_spin.value()))
+            sock.close()
+            
+            status_msg = self.findChild(QLabel, "status_message")
+            if status_msg and hasattr(status_msg, 'setText'):
+                status_msg.setText(f"✅ Port {self.port_spin.value()} is open on {ip}")
+                
+        except socket.gaierror as e:
+            ErrorHandler.log_error("test", f"DNS error: {str(e)}")
+            status_msg = self.findChild(QLabel, "status_message")
+            if status_msg and hasattr(status_msg, 'setText'):
+                status_msg.setText(f"❌ Cannot resolve hostname: {host}")
+        except socket.timeout:
+            ErrorHandler.log_error("test", "Connection timeout")
+            status_msg = self.findChild(QLabel, "status_message")
+            if status_msg and hasattr(status_msg, 'setText'):
+                status_msg.setText(f"⏱ Connection timed out")
+        except ConnectionRefusedError as e:
+            ErrorHandler.log_error("test", str(e))
+            status_msg = self.findChild(QLabel, "status_message")
+            if status_msg and hasattr(status_msg, 'setText'):
+                status_msg.setText(f"❌ Connection refused on port {self.port_spin.value()}")
+        except Exception as e:
+            ErrorHandler.log_error("test", str(e))
+            status_msg = self.findChild(QLabel, "status_message")
+            if status_msg and hasattr(status_msg, 'setText'):
+                status_msg.setText(f"❌ Error: {str(e)}")
 
-            # Input for command
-            input_group = QGroupBox("Command", self)
-            input_vbox = QVBoxLayout(input_group)
-
-            cmd_edit = QLineEdit(self)
-            cmd_edit.setPlaceholderText("Enter command to run on remote server (e.g., ls -la, whoami)")
-            cmd_edit.setObjectName("cmd_edit")
-            cmd_edit.returnShortcut = ""
-
-            input_vbox.addWidget(cmd_edit)
-            input_vbox.addStretch()
-
-            button_layout = QHBoxLayout()
-            dialog_vbox = QVBoxLayout(dialog)
-            dialog_vbox.addWidget(input_group)
-            dialog_vbox.addLayout(button_layout)
-
-            # OK button
-            ok_btn = QPushButton("Run")
-            ok_btn.clicked.connect(lambda: self._execute_command_and_close(cmd_edit, dialog))
-            ok_btn.setMinimumHeight(30)
-            ok_btn.setDefault(True)
-
-            # Cancel button
-            cancel_btn = QPushButton("Cancel")
-            cancel_btn.clicked.connect(dialog.accept)  # Dialog will be rejected via reject()
-            cancel_btn.setDisabled(True)
-
-            button_layout.addWidget(ok_btn)
-            button_layout.addWidget(cancel_btn)
-
-            dialog.connect(self.status_changed, lambda sig: self._update_dialog_buttons(sig, dialog, ok_btn, cancel_btn))
-            try:
-                dialog.exec()  # Will be handled by Qt's auto-delete after execution
-            except Exception:
-                pass  # Dialog was dismissed or closed
-        except Exception:
-            # Handle any errors from dialog creation/setup
-            QMessageBox.critical(self, "Dialog Error", f"Failed to create command dialog: {str(e)}")
-
-    def _execute_command_and_close(self, cmd_edit: QLineEdit, dialog: QDialog) -> None:
-        """Execute command and close dialog."""
-        cmd = str(cmd_edit.text()).strip()
-        if not cmd:
-            QMessageBox.warning(self, "Empty Command", "Please enter a command.")
-            return
-
-        self.run_command(cmd)
-
-    def _update_dialog_buttons(self, sig: Signal, dialog: QDialog, ok_btn: QPushButton, cancel_btn: QPushButton) -> None:
-        """Update dialog button states based on connection status."""
-        if sig == "connected":
-            ok_btn.setDisabled(False)
-            ok_btn.setText("Run")
-            self._status_bar.showMessage(f"Connected - ready for commands", 5000)
-        elif sig == "disconnected":
-            dialog.reject()
-            QMessageBox.information(self, "Session Ended", "Connection ended. Command execution cancelled.")
-        elif sig == "error":
-            cancel_btn.setDisabled(False)
-            ok_btn.setText("Close")
-
-    def _update_log_view(self) -> None:
-        """Update log view (stub method)."""
-
-    def run_command(self, command: str) -> None:
-        """Execute a remote command via SSH."""
-        if not self.is_connected or not self.ssh_manager:
-            QMessageBox.warning(self, "Not Connected",
-                "Please connect to a server first.")
-            return
-
-        # Lock start and stop buttons during operation
+    def closeEvent(self, event) -> None:
+        """Handle window close."""
         try:
-            self.start_btn.setDisabled(True)
-            self.stop_btn.setDisabled(True)
-        except Exception:
-            pass  # Ignore button locking errors
-
-        try:
-            # Escape special characters in command for Python
-            escaped_command = command.replace("'", "\\''")
-            cmd_string = f"'{escaped_command}'"
-
-            # Execute command (blocks briefly)
-            result, output, error, exit_code = self.ssh_manager.run_command(
-                command=cmd_string,
-                timeout=30.0
-            )
-
-            # Parse and show results
-            if result:
-                if exit_code == 0:
-                    status_label = self.findChild(QLabel, "status")
-                    if status_label:
-                        status_label.setStyleSheet("color: #4ade80; padding: 8px;")
-
-                output_text = ""
-                if error and exit_code != 0:
-                    output_text += f"<strong>STDERR:</strong><br>{error}<hr>"
-                if output:
-                    output_text += f"<strong>STDOUT:</strong><br>{output}"
-
-                self._status_bar.showMessage(
-                    f"Command executed. Exit code: {exit_code}",
-                    5000
-                )
-
-        finally:
-            # Always unlock buttons after operation completes
-            self.start_btn.setDisabled(False)
-            self.stop_btn.setDisabled(False)
-
-    def _update_log_view(self) -> None:
-        """Clear and update the log view with current state."""
-        self._log_view.clear()
-        if self.is_connected:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            self._log_view.appendPlainText(f"[{timestamp}] Connection established - ready for commands")
-
-    @pyqtSlot(str)
-    def _on_status_changed(self, status: str) -> None:
-        """Update UI based on connection state and manage button states."""
-        # Update status label and styling
-        status_label = self.findChild(QLabel, "status")
-        if status_label:
-            if status == "connected":
-                status_label.setText("Status: Connected")
-                status_label.setStyleSheet("color: #4ade80; padding: 8px;")
-            elif status == "disconnected":
-                status_label.setText("Status: Disconnected")
-                status_label.setStyleSheet("color: #808080; padding: 8px;")
-
-        # Update button states (Task 2c)
-        if status == "connected":
-            self.is_connected = True
-            self.cmd_btn.setDisabled(False)
-            self.start_btn.setDisabled(False)
-            self.stop_btn.setDisabled(False)
-            self._status_bar.showMessage("Connected", 5000)
-            self._update_log_view()
-        elif status == "disconnected":
-            self.is_connected = False
-            self.cmd_btn.setDisabled(True)
-            self._status_bar.clearMessage()
-            self._status_bar.showMessage("Disconnected", 5000)
-            # Unlock start and stop buttons on disconnect
-            self.start_btn.setDisabled(False)
-            self.stop_btn.setDisabled(False)
-        elif status == "error":
-            self.is_connected = False
-            self.cmd_btn.setDisabled(True)
-            # Also unlock start and stop buttons on error
-            self.start_btn.setDisabled(False)
-            self.stop_btn.setDisabled(False)
+            if self.is_connected:
+                print("[MainWindow] Disconnecting on exit...", file=sys.stderr)
+                self._on_disconnect()
+        except Exception as e:
+            ErrorHandler.log_error("exit", str(e))
+        event.accept()
 
 
 def main():
-    """Entry point - runs the application."""
-    # Check display type for logging
-    display_type = _detect_display_type()
-    print(f"[AIManagerUI] Starting on {display_type} display", file=sys.stderr)
-
-    # Create and show the main window
     app = QApplication(sys.argv)
     app.setApplicationName("AI Model Server Manager")
-
+    
     window = MainWindow()
     window.show()
-
+    
     sys.exit(app.exec())
 
 
