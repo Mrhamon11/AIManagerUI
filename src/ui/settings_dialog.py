@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QAction
+from src.error_handler import ErrorHandler
 
 
 class ConnectionTester(QThread):
@@ -485,40 +486,25 @@ class SettingsDialog(QDialog):
 
             self.last_connection_display.setText("-")
 
-            # Log error to file (Task 3 - error handling and diagnostics)
-            try:
-                self._log_error(message)
-            except Exception as e:
-                print(f"Failed to log error: {e}", file=sys.stderr)
-
-            QMessageBox.critical(
-                self,
-                "Connection Failed",
-                f"✗ Server connection test failed:\n\n{message}\n\nPlease check your network connection and try again."
+            # Task 4: Use centralized error handler for logging
+            ErrorHandler.log_connection_error(
+                host=host,
+                port=port,
+                username=user_edit.text().strip() if user_edit else None,
+                exception=Exception(message)
             )
 
-    def _log_error(self, error_message: str) -> None:
-        """Log error to the internal log file."""
-        import os
-        from pathlib import Path
+            QMessageBox.critical(
+    self,
+    "Connection Failed",
+    f"✗ Server connection test failed:\n\n{message}\n\nTROUBLESHOOTING:\n" 
+    f"• Verify your network connection\n" 
+    f"• Ensure SSH service is running on target server\n" 
+    f"• Check firewall rules blocking port 22\n"
+    f"Detailed logs: {ErrorHandler.get_error_log_path()}"
+)
 
-        # Create logs directory if it doesn't exist
-        logs_dir = Path("~/.local/share/AIManagerUI/logs")
-        logs_dir.mkdir(parents=True, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        error_file = logs_dir / f"connection_errors_{timestamp}.log"
-
-        try:
-            with open(error_file, "a") as f:
-                f.write(f"\n=== Connection Error at {datetime.now()} ===\n")
-                f.write(f"Host: {self.ip_edit.text()}\n")
-                f.write(f"Username: {self.user_edit.text()}\n")
-                f.write(f"Port: {self.port_spin.value()}\n")
-                f.write(f"Error: {error_message}\n")
-                f.write("=" * 50 + "\n")
-        except Exception as e:
-            print(f"Failed to write error log: {e}", file=sys.stderr)
+    
 
     def _on_apply_clicked(self) -> None:
         """Handle Apply button click."""

@@ -93,11 +93,16 @@ class TestSettingsDialogErrorHandling:
     def test_error_message_formatting(self, qt_app):
         """Test that error messages are user-friendly."""
         from src.ui.settings_dialog import SettingsDialog
-        
+        from src.error_handler import get_error_log_path
+        from pathlib import Path
+
         dialog = SettingsDialog(parent=None)
-        
-        # Verify warning message text would be helpful
-        assert hasattr(dialog, '_log_error') or callable(getattr(dialog, '_log_error', None))
+
+        # Verify Task 4: Error logging directory exists and is properly configured
+        log_path = get_error_log_path()
+        logs_dir = Path(log_path).parent
+        assert logs_dir.is_absolute()
+        assert "local/share/AIManagerUI/logs" in str(logs_dir)
 
 
 if __name__ == "__main__":

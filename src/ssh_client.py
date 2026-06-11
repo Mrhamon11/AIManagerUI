@@ -5,6 +5,7 @@ Provides reliable SSH connection management with:
 - Graceful error handling for connection failures
 - Automatic reconnection with exponential backoff
 - Timeout handling for long-running commands
+Task 4: Integrated with centralized error handler for diagnostics.
 """
 
 import asyncio
@@ -12,6 +13,8 @@ import logging
 import os
 from typing import Optional, Callable, Any, Dict
 from enum import Enum
+
+from src.error_handler import ErrorHandler
 
 import paramiko
 try:
@@ -347,6 +350,7 @@ class SSHConnectionManager:
 
         Raises:
             RuntimeError: If no active connection to close
+        Task 4: Logs disconnection errors with diagnostics.
         """
         if self._client is None or self._status != ConnectionStatus.CONNECTED:
             return True  # Nothing to disconnect
@@ -381,6 +385,11 @@ class SSHConnectionManager:
             return True
 
         except Exception as e:
+            # Task 4: Log disconnection errors with diagnostics
+            ErrorHandler.log_error(
+                "disconnection",
+                f"Error during disconnection from {self.host}: {e}"
+            )
             logging.error(f"Error during disconnection: {e}")
             return False
 
@@ -418,6 +427,7 @@ class SSHProcessWrapper:
     Wrapper for handling SSH process output and providing convenient execution.
 
     Provides higher-level interface for running commands and processing results.
+    Task 4: Uses centralized error handler for logging.
     """
 
     def __init__(
@@ -460,6 +470,7 @@ class SSHProcessWrapper:
 
         Raises:
             Exception: Any exception from underlying manager
+        Task 4: Logs errors using centralized error handler.
         """
         try:
             result = self.manager.run_command(
@@ -469,7 +480,9 @@ class SSHProcessWrapper:
             )
             return result
         except Exception as e:
-            logging.error(f"Failed to execute '{command}': {e}")
+            # Task 4: Log errors using centralized error handler
+            ErrorHandler.log_error("command", f"Command execution failed: {command} - {e}")
+            self.log_function(f"Failed to execute '{command}': {e}", level=logging.ERROR)
             raise
 
     def run_async(self, command: str) -> asyncio.Future[SSHProcessOutput]:
@@ -570,18 +583,26 @@ if __name__ == "__main__":
 def _test_ssh_connection(manager: SSHConnectionManager, command: str = "echo test") -> bool:
     """
     Test if an SSH connection and basic command execution works.
-    
+
     Args:
         manager: SSHConnectionManager instance
         command: Simple command to execute after connecting
-        
+
     Returns:
         True if connection is successful, False otherwise
+    Task 4: Updated with error handler integration.
     """
     try:
         manager.connect()
         result = manager.run_command(command)
         manager.disconnect()
         return bool(result)
-    except Exception:
+    except Exception as e:
+        # Task 4: Log connection errors using the Error Handler
+        ErrorHandler.log_connection_error(
+            host=manager.host,
+            port=manager.port,
+            username=manager.username,
+            exception=e
+        )
         return False

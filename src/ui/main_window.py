@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit, QStatusBar, QScrollArea, QToolBar, QCheckBox, QComboBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
+from src.error_handler import ErrorHandler
 
 
 def _detect_display_type() -> str:
@@ -91,6 +92,9 @@ class MainWindow(QMainWindow):
         # Status tracking
         self.is_connected = False
         self.ssh_manager: Optional[SSHConnectionManager] = None
+
+        # Task 4: Initialize error handler with logs directory
+        ErrorHandler.set_logs_directory("~/.local/share/AIManagerUI/logs")
 
     def _setup_action_panel(self, layout: QVBoxLayout) -> None:
         """Setup action buttons panel."""
@@ -263,10 +267,27 @@ class MainWindow(QMainWindow):
             self._status_bar.showMessage(f"Connected to {host} as {user}", 10000)
 
         except Exception as e:
-            error_msg = f"Connection failed: {str(e)}"
+            # Task 4: Log error and provide troubleshooting tips
+            ErrorHandler.log_connection_error(
+                host=host,
+                port=port,
+                username=user,
+                exception=e
+            )
+            error_msg = f"Failed to connect:\n{ErrorHandler.get_error_log_path()}"
             self.status_changed.emit("error")
-            QMessageBox.critical(self, "Connection Error",
-                f"Failed to connect:\n{error_msg}")
+            QMessageBox.critical(
+                self, 
+                "Connection Error",
+                f"✗ Connection failed to {host} on port {port}\n\n"
+                f"Error message:\n{str(e)}\n\n"
+                f"Detailed log: {ErrorHandler.get_error_log_path()}\n\n"
+                f"TROUBLESHOOTING:\n" 
+                f"• Verify your network connection\n" 
+                f"• Ensure SSH service is running on target server\n" 
+                f"• Check firewall rules blocking port 22\n" 
+                f"• Try with a different host/IP address"
+            )
 
     def _on_stop_clicked(self) -> None:
         """Handle stop button click - disconnects from SSH server."""
@@ -299,10 +320,23 @@ class MainWindow(QMainWindow):
             self._status_bar.showMessage("Disconnected", 5000)
 
         except Exception as e:
-            error_msg = f"Disconnect failed: {str(e)}"
+            # Task 4: Log error and provide troubleshooting tips
+            ErrorHandler.log_error(
+                "disconnection",
+                f"Error during disconnection from {host}: {str(e)}"
+            )
+            error_msg = f"Failed to disconnect:\n{ErrorHandler.get_error_log_path()}"
             self.status_changed.emit("error")
-            QMessageBox.critical(self, "Disconnect Error",
-                f"Failed to disconnect:\n{error_msg}")
+            QMessageBox.critical(
+                self,
+                "Disconnect Error",
+                f"✗ Disconnection failed\n\n"
+                f"Error message:\n{str(e)}\n\n"
+                f"Detailed log: {ErrorHandler.get_error_log_path()}\n\n"
+                f"TROUBLESHOOTING:\n" 
+                f"• Force quit the application if disconnect is not working\n" 
+                f"• Restart the application to reset connection state"
+            )
 
     def _on_command_clicked(self) -> None:
         """Handle run command button click."""
