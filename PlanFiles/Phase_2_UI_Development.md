@@ -19,17 +19,18 @@ Build functional GUI with all required features for starting/stopping AI model s
 ## Tasks
 
 ### 1. Implement main window structure
-**Goal:** Create the application skeleton with QMainWindow, toolbar, status bar, and split view.
+**Goal:** Create the application skeleton with QMainWindow, single-action button, status bar, and settings form.
 
-**Location:** `src/ui/main_window.py` (or `main_window.py`)
+**Location:** `src/ui/main_window.py`
 
 **Features:**
-- QMainWindow with toolbar containing action buttons
-- Split into:
-  - **Action area:** Main controls (Start/Stop buttons)
-  - **Settings panel:** Configuration inputs
+- QMainWindow with single toggle-style action button (no split view)
+- Simple layout:
+  - **TOP:** Connection status indicator (`Status: DISCONNECTED`/`CONNECTED`)
+  - **MIDDLE:** Toggle action button (`CONNECT`/`DISCONNECT`) - green when disconnected, red when connected
+  - **BOTTOM:** Server connection details form (host, port, username, password)
 - Responsive layout for different screen sizes
-- Flatpak-specific handling: sandbox permissions, desktop integration
+- Clean minimalist design without split panels
 
 **Testing Requirements:**
 - Unit tests: Verify widget creation, layout management
@@ -38,19 +39,18 @@ Build functional GUI with all required features for starting/stopping AI model s
 
 ---
 
-### 2. Build Start/Stop button functionality
-**Goal:** Implement primary user actions with proper state management.
+### 2. Build Toggle Action Button functionality
+**Goal:** Implement single toggle button with proper state management.
 
-**Location:** Toolbar in main window
+**Location:** Main layout in main window (not toolbar)
 
 **Features:**
-- Main toolbar button with clear icons:
-  - ▶️ Start icon for starting the server script
-  - ⏹ Stop icon for stopping the server script
-- Button states: enabled/disabled based on connection status
-- Progress/status indicator during script execution
-- Prevent double-clicking while script is running
-- Visual feedback via tooltip, status bar message
+- Single action button that toggles between connect/disconnect states:
+  - **CONNECT** (green/cyan, `#06b6d4`) when disconnected - invites user to connect
+  - **DISCONNECT** (red/orange, `#e76f51`) when connected - invites user to disconnect
+- Button automatically updates text and color based on connection state
+- Clean minimalist design without separate test/connect/disconnect buttons
+- Visual feedback via status bar message on connection state changes
 
 **Testing Requirements (Integration):**
 - Verify button state changes (enabled ↔ disabled)
@@ -101,8 +101,8 @@ Build functional GUI with all required features for starting/stopping AI model s
 
 ## Milestones for Phase 2 ✅ ALL COMPLETE
 
-- [✅] **Main window complete:** QMainWindow with toolbar, status bar, split view (action/settings panels) implemented
-- [✅] **Start/Stop buttons functional:** Connect/Disconnect buttons with proper state management and feedback
+- [✅] **Main window complete:** Clean single-window interface with toggle-style action button (CONNECT/DISCONNECT), server form inputs, and status indicator
+- [✅] **Toggle action button functional:** Single button toggling CONNECT (green) ↔ DISCONNECT (red) with automatic state updates and visual feedback
 - [✅] **Settings panel working:** SettingsDialog with IP/host/user/port fields, connectivity test button, credential storage checkbox, status indicators, last connection timestamp
 - [✅] **Error handling in place:** ErrorHandler centralized logging, troubleshooting tips, error popup messages
 - [✅] **All Phase 2 tests passing:** Unit tests (100%) and integration tests verified (76% passed - remaining require actual server connectivity)

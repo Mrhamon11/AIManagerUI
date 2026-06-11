@@ -101,11 +101,11 @@ AIModelServerManager/
 - **Review:** Can we trigger actual start/stop? Is connection stable under different network conditions?
 
 ### Milestone 2: UI & Settings Panel [TESTED]
-- [ ] Settings dialog accepts and saves IP, username
-- [ ] "Save Credentials Securely" checkbox stores password in keyring
-- [ ] Connectivity test button works (verifies server reachable)
-- [ ] Start/Stop buttons respond to user input
-- [ ] Visual feedback during operations (status bar, tooltips)
+- [✅] Toggle action button works (CONNECT green ↔ DISCONNECT red)
+- [✅] Settings dialog accepts and saves IP, username
+- [✅] "Save Credentials Securely" checkbox stores password in keyring
+- [✅] Connectivity test button works (verifies server reachable)
+- [✅] Visual feedback during operations (status bar, tooltips)
 - **Review:** Does the UI feel responsive? Are error messages helpful?
 
 ### Milestone 3: Script Execution & Error Handling [TESTED]
