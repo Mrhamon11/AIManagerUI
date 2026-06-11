@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QSpinBox, QMessageBox, QStatusBar
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from src.error_handler import ErrorHandler
 
 
@@ -31,6 +31,9 @@ except ImportError:
 
 class MainWindow(QMainWindow):
     """Simple server connection window with toggle-style connect button."""
+
+    # Define signals for status updates
+    status_changed = pyqtSignal(str)
 
     def __init__(self) -> None:
         super().__init__()
