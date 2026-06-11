@@ -103,6 +103,7 @@ Build functional GUI with all required features for starting/stopping AI model s
 
 - [✅] **Main window complete:** Clean single-window interface with toggle-style action button (CONNECT/DISCONNECT), server form inputs, and status indicator
 - [✅] **Toggle action button functional:** Single button toggling CONNECT (green) ↔ DISCONNECT (red) with automatic state updates and visual feedback
+- [✅] **Configuration persistence implemented:** IP address, username, password, and port automatically saved to encrypted JSON file on connection change or app close; loaded automatically on startup
 - [✅] **Settings panel working:** SettingsDialog with IP/host/user/port fields, connectivity test button, credential storage checkbox, status indicators, last connection timestamp
 - [✅] **Error handling in place:** ErrorHandler centralized logging, troubleshooting tips, error popup messages
 - [✅] **All Phase 2 tests passing:** Unit tests (100%) and integration tests verified (76% passed - remaining require actual server connectivity)

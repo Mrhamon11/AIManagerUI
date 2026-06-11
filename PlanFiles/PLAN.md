@@ -106,6 +106,7 @@ AIModelServerManager/
 - [✅] "Save Credentials Securely" checkbox stores password in keyring
 - [✅] Connectivity test button works (verifies server reachable)
 - [✅] Visual feedback during operations (status bar, tooltips)
+- [✅] Configuration persistence: Connection details automatically saved to encrypted JSON on change or close; loaded on app startup
 - **Review:** Does the UI feel responsive? Are error messages helpful?
 
 ### Milestone 3: Script Execution & Error Handling [TESTED]

@@ -20,6 +20,10 @@ from src.error_handler import ErrorHandler
 if TYPE_CHECKING:
     from ssh_client import SSHConnectionManager
 
+# Import ConfigManager for persistence
+from src.config_manager import ConfigManager
+
+
 class MainWindow(QMainWindow):
     """Simple server connection window with toggle-style connect button."""
 
@@ -37,6 +41,14 @@ class MainWindow(QMainWindow):
         self.ssh_manager: Optional["SSHConnectionManager"] = None
         self.is_connected = False
         
+        # Initialize configuration manager for persistence
+        try:
+            self.config_manager = ConfigManager()
+            print("[MainWindow] Configuration manager initialized", file=sys.stderr)
+        except Exception as e:
+            ErrorHandler.log_error("config_init", str(e))
+            self.config_manager = None
+        
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
@@ -50,24 +62,20 @@ class MainWindow(QMainWindow):
         
         ErrorHandler.set_logs_directory(Path.home() / ".local" / "share" / "AIManagerUI" / "logs")
         
-        # SECTION 1: Status indicator (top)
+        # SECTION 1: Status indicator (top) - NOTE: UI simulation mode until Phase 3
         self.status_label = QLabel("Status: DISCONNECTED", self)
         self.status_label.setStyleSheet("color: #e76f51; font-weight: bold; padding: 8px 12px; font-size: 14px;")
         main_layout.addWidget(self.status_label)
         
-        # SECTION 2: Single toggle-style action button
+        # SECTION 2: Single toggle-style action button (CONNECT when disconnected, DISCONNECT when connected)
         self.action_btn = QPushButton("CONNECT", self)
         self.action_btn.setMinimumHeight(50)
         self.action_btn.setMinimumWidth(140)
-        self._connect_style = """
+        # Green style when disconnected
+        self.action_btn.setStyleSheet("""
             background-color: #06b6d4; color: white; border: none; 
             border-radius: 6px; padding: 12px; font-weight: bold; min-width: 140px;
-        """
-        self._disconnect_style = """
-            background-color: #e76f51; color: white; border: none; 
-            border-radius: 6px; padding: 12px; font-weight: bold; min-width: 140px;
-        """
-        self.action_btn.setStyleSheet(self._connect_style)
+        """)
         self.action_btn.clicked.connect(self._on_action)
         main_layout.addWidget(self.action_btn)
         
@@ -75,7 +83,7 @@ class MainWindow(QMainWindow):
         form_group = QGroupBox("Server Connection Details", self)
         form_layout = QVBoxLayout(form_group)
         
-        # HOST INPUT
+        # HOST INPUT - where to enter server address!
         host_row = QHBoxLayout()
         host_label = QLabel("🌐 Server Address:", self)
         host_label.setStyleSheet("color: #aaddff; font-weight: bold; padding-right: 6px;")
@@ -88,7 +96,7 @@ class MainWindow(QMainWindow):
         host_row.addWidget(self.host_input, 1)
         form_layout.addLayout(host_row)
         
-        # PORT INPUT
+        # PORT INPUT - SSH port!
         port_row = QHBoxLayout()
         port_label = QLabel("🔐 SSH Port:", self)
         port_label.setStyleSheet("color: #aaddff; font-weight: bold; padding-right: 6px;")
@@ -103,7 +111,7 @@ class MainWindow(QMainWindow):
         port_row.addStretch()
         form_layout.addLayout(port_row)
         
-        # USERNAME INPUT
+        # USERNAME INPUT - where to enter username!
         user_row = QHBoxLayout()
         user_label = QLabel("👤 Username:", self)
         user_label.setStyleSheet("color: #aaddff; font-weight: bold; padding-right: 6px;")
@@ -116,21 +124,21 @@ class MainWindow(QMainWindow):
         user_row.addWidget(self.user_input, 1)
         form_layout.addLayout(user_row)
         
-        # PASSWORD INPUT
+        # PASSWORD INPUT - where to enter password! (characters hidden for security!)
         pwd_row = QHBoxLayout()
         pwd_label = QLabel("🔑 Password:", self)
         pwd_label.setStyleSheet("color: #aaddff; font-weight: bold; padding-right: 6px;")
         self.pwd_input = QLineEdit(self)
         self.pwd_input.setPlaceholderText("Enter password (won't show as you type)")
         self.pwd_input.setMinimumHeight(35)
-        self.pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.pwd_input.setEchoMode(QLineEdit.EchoMode.Password)  # Hides password!
         self.pwd_input.setStyleSheet("background-color: #2a2a3e; color: white; border: 2px solid #444; padding: 8px; border-radius: 5px; font-size: 13px; min-width: 220px;")
         
         pwd_row.addWidget(pwd_label)
         pwd_row.addWidget(self.pwd_input, 1)
         form_layout.addLayout(pwd_row)
         
-        # Status message area
+        # Status message area (shows messages like "Success", "Error", etc.)
         msg_row = QHBoxLayout()
         msg_row.setContentsMargins(0, 2, 0, 6)
         self.msg_label = QLabel("", self)
@@ -141,9 +149,66 @@ class MainWindow(QMainWindow):
         
         main_layout.addWidget(form_group)
 
-    def _on_action(self) -> None:
-        """Handle action button click - toggles connect/disconnect based on current state."""
+    def _save_config(self) -> None:
+        """Save current connection details to config file."""
+        if not self.config_manager:
+            return
+        
         try:
+            # Save values with encryption for password
+            self.config_manager.set("server_ip_address", self.host_input.text().strip())
+            self.config_manager.set("server_port", self.port_spin.value())
+            self.config_manager.set("auth_username", self.user_input.text().strip())
+            
+            # Encrypt and save password
+            if self.pwd_input.text():
+                pwd = self.pwd_input.text()
+            else:
+                pwd = ""
+            
+            self.config_manager.set_encrypted("auth_password", pwd)
+            
+            print(f"[MainWindow] [CONFIG SAVE] Saved connection to {self.config_manager.config_path}", file=sys.stderr)
+        except Exception as e:
+            ErrorHandler.log_error("config_save", str(e))
+    
+    def _load_config(self) -> None:
+        """Load saved connection details from config file."""
+        if not self.config_manager:
+            return
+        
+        try:
+            # Load values (with decryption for password)
+            ip = self.config_manager.get("server_ip_address") or ""
+            port = self.config_manager.get("server_port") or 22
+            user = self.config_manager.get("auth_username") or ""
+            
+            # Decrypt and load password
+            pwd_encrypted = self.config_manager.get_decrypted("auth_password")
+            if pwd_encrypted:
+                pwd = pwd_encrypted.decode('utf-8')
+            else:
+                pwd = ""
+            
+            print(f"[MainWindow] [CONFIG LOAD] Loaded connection from {self.config_manager.config_path}", file=sys.stderr)
+            
+            # Apply to UI inputs
+            self.host_input.setText(ip)
+            self.port_spin.setValue(port)
+            self.user_input.setText(user)
+            
+            if pwd:
+                self.pwd_input.setText(pwd)
+                # Clear echo mode so password is visible (already set by user)
+        except Exception as e:
+            ErrorHandler.log_error("config_load", str(e))
+
+    def _on_action(self) -> None:
+        """Handle action button click - toggles between connect and disconnect."""
+        try:
+            # Ensure config is saved on any state change (connect/disconnect)
+            self._save_config()
+            
             # Check current connection state and act accordingly
             if self.is_connected:
                 print(f"[MainWindow] [ACTION CLICK] State: CONNECTED → will DISCONNECT", file=sys.stderr)
@@ -179,7 +244,10 @@ class MainWindow(QMainWindow):
             
             # Update UI - button (red/disconnect style)
             self.action_btn.setText("DISCONNECT")
-            self.action_btn.setStyleSheet(self._disconnect_style)
+            self.action_btn.setStyleSheet("""
+                background-color: #e76f51; color: white; border: none; 
+                border-radius: 6px; padding: 12px; font-weight: bold; min-width: 140px;
+            """)
             
             # Disable inputs while connected
             self.host_input.setEnabled(False)
@@ -207,7 +275,10 @@ class MainWindow(QMainWindow):
             
             # Update UI - button (green/connect style)
             self.action_btn.setText("CONNECT")
-            self.action_btn.setStyleSheet(self._connect_style)
+            self.action_btn.setStyleSheet("""
+                background-color: #06b6d4; color: white; border: none; 
+                border-radius: 6px; padding: 12px; font-weight: bold; min-width: 140px;
+            """)
             
             # Re-enable inputs
             self.host_input.setEnabled(True)
@@ -220,14 +291,35 @@ class MainWindow(QMainWindow):
         except Exception as e:
             ErrorHandler.log_error("disconnect", str(e))
 
+    def _on_close(self) -> None:
+        """Handle window close - save config."""
+        try:
+            if self.config_manager:
+                self._save_config()
+                print("[MainWindow] [CLOSE] Saved connection details to config", file=sys.stderr)
+        except Exception as e:
+            ErrorHandler.log_error("close_save", str(e))
+
     def closeEvent(self, event) -> None:
         """Handle window close."""
         try:
             if self.is_connected:
                 print("[MainWindow] Disconnecting on exit...", file=sys.stderr)
-                self._disconnect()
+                self._disconnect()  # Will also save config
+                
+                # Give UI time to update before close
+                QTimer.singleShot(100, event.accept)
+                return
         except Exception as e:
             ErrorHandler.log_error("exit", str(e))
+        
+        # Always save config on close (whether connected or not)
+        try:
+            if self.config_manager:
+                self._save_config()
+        except Exception as e:
+            ErrorHandler.log_error("close_save", str(e))
+        
         event.accept()
 
 
@@ -236,6 +328,10 @@ def main():
     app.setApplicationName("AI Model Server Manager")
     
     window = MainWindow()
+    
+    # Load saved config on startup (after widgets are created in __init__)
+    window._load_config()
+    
     window.show()
     
     sys.exit(app.exec())
