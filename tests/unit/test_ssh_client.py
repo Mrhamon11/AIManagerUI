@@ -23,6 +23,7 @@ from ssh_client import (
     SSHProcessWrapper,
     create_ssh_connection,
     _test_ssh_connection,
+    OutputStream,
 )
 
 
@@ -515,6 +516,84 @@ class TestTestSSHConnection(unittest.TestCase):
         result = mock_test(MagicMock(), "echo test")
 
         self.assertFalse(result)
+
+
+
+
+class TestOutputStream(unittest.TestCase):
+    """Tests for OutputStream class (Task 1: streaming support)."""
+
+    def test_initialization_default_state(self):
+        """Test OutputStream initializes with empty state."""
+        stream = OutputStream()
+
+        self.assertEqual(stream.stdout_chunks, [])
+        self.assertEqual(stream.stderr_chunks, [])
+        self.assertIsNone(stream.return_code)
+        self.assertFalse(stream.is_completed())
+
+    def test_append_stdout(self):
+        """Test appending stdout chunks."""
+        stream = OutputStream()
+        stream.append_stdout(b"line 1\n")
+        stream.append_stdout(b"line 2\n")
+
+        self.assertEqual(stream.stdout, "line 1\nline 2\n")
+
+    def test_append_stderr(self):
+        """Test appending stderr chunks."""
+        stream = OutputStream()
+        stream.append_stderr(b"error: connection failed\n")
+
+        self.assertEqual(stream.stderr, "error: connection failed\n")
+
+    def test_set_return_code(self):
+        """Test setting return code."""
+        stream = OutputStream()
+        stream.set_return_code(0)
+        self.assertEqual(stream.return_code, 0)
+
+    def test_complete_sets_completed_flag(self):
+        """Test complete() method sets completed flag."""
+        stream = OutputStream()
+        stream.complete()
+
+        self.assertTrue(stream.is_completed())
+
+    def test_get_full_output(self):
+        """Test getting concatenated full output."""
+        stream = OutputStream()
+        stream.append_stdout(b"output1\n")
+        stream.append_stderr(b"error1\n")
+        stdout, stderr = stream.get_full_output()
+
+        self.assertEqual(stdout, "output1\n")
+        self.assertEqual(stderr, "error1\n")
+
+    def test_property_accessors(self):
+        """Test stdout and stderr property accessors."""
+        stream = OutputStream()
+        stream.append_stdout(b"test output\n")
+        stream.append_stderr(b"test error\n")
+
+        self.assertEqual(stream.stdout, "test output\n")
+        self.assertEqual(stream.stderr, "test error\n")
+
+    def test_property_accessors_empty(self):
+        """Test property accessors return empty strings when no data."""
+        stream = OutputStream()
+
+        self.assertEqual(stream.stdout, "")
+        self.assertEqual(stream.stderr, "")
+
+    def test_stdout_chunks_list(self):
+        """Test stdout_chunks returns list of chunks."""
+        stream = OutputStream()
+        stream.append_stdout(b"chunk1\n")
+        stream.append_stdout(b"chunk2\n")
+
+        self.assertIsInstance(stream.stdout_chunks, list)
+        self.assertEqual(len(stream.stdout_chunks), 2)
 
 
 if __name__ == "__main__":
