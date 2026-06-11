@@ -20,8 +20,13 @@ from src.error_handler import ErrorHandler
 if TYPE_CHECKING:
     from ssh_client import SSHConnectionManager
 
-# Import ConfigManager for persistence
-from src.config_manager import ConfigManager
+# Import ConfigManager for persistence (optional - graceful fallback if missing)
+try:
+    from src.config_manager import ConfigManager
+    CONFIG_MANAGER_AVAILABLE = True
+except ImportError:
+    CONFIG_MANAGER_AVAILABLE = False
+    ConfigManager = None
 
 
 class MainWindow(QMainWindow):
@@ -41,12 +46,16 @@ class MainWindow(QMainWindow):
         self.ssh_manager: Optional["SSHConnectionManager"] = None
         self.is_connected = False
         
-        # Initialize configuration manager for persistence
-        try:
-            self.config_manager = ConfigManager()
-            print("[MainWindow] Configuration manager initialized", file=sys.stderr)
-        except Exception as e:
-            ErrorHandler.log_error("config_init", str(e))
+        # Initialize configuration manager for persistence (optional - graceful fallback)
+        if CONFIG_MANAGER_AVAILABLE:
+            try:
+                self.config_manager = ConfigManager()
+                print("[MainWindow] Configuration manager initialized", file=sys.stderr)
+            except Exception as e:
+                ErrorHandler.log_error("config_init", str(e))
+                self.config_manager = None
+                print(f"[MainWindow] ConfigManager initialization failed, using in-memory storage: {str(e)}", file=sys.stderr)
+        else:
             self.config_manager = None
         
         central_widget = QWidget()
@@ -171,7 +180,7 @@ class MainWindow(QMainWindow):
             print(f"[MainWindow] [CONFIG SAVE] Saved connection to {self.config_manager.config_path}", file=sys.stderr)
         except Exception as e:
             ErrorHandler.log_error("config_save", str(e))
-    
+
     def _load_config(self) -> None:
         """Load saved connection details from config file."""
         if not self.config_manager:
@@ -183,10 +192,17 @@ class MainWindow(QMainWindow):
             port = self.config_manager.get("server_port") or 22
             user = self.config_manager.get("auth_username") or ""
             
-            # Decrypt and load password
+            # Decrypt and load password (handle both bytes and string returns)
             pwd_encrypted = self.config_manager.get_decrypted("auth_password")
             if pwd_encrypted:
-                pwd = pwd_encrypted.decode('utf-8')
+                try:
+                    if isinstance(pwd_encrypted, bytes):
+                        pwd = pwd_encrypted.decode('utf-8')
+                    else:
+                        # Already a string (from encrypted JSON or empty password)
+                        pwd = str(pwd_encrypted) if pwd_encrypted else ""
+                except AttributeError:
+                    pwd = ""
             else:
                 pwd = ""
             

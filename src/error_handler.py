@@ -6,6 +6,7 @@ Task 4: Add error handling and diagnostics with helpful troubleshooting tips.
 """
 
 import logging
+import sys
 import os
 from pathlib import Path
 from typing import Optional, Dict, Any
